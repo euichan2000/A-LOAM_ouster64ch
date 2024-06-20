@@ -78,7 +78,7 @@ const int laserCloudWidth = 21;
 const int laserCloudHeight = 21;
 const int laserCloudDepth = 11;
 
-
+//21*21*11 개의 point clouds를 선언한다. map을 만들 때 4851개의 point cloud만을 사용한다.
 const int laserCloudNum = laserCloudWidth * laserCloudHeight * laserCloudDepth; //4851
 
 
@@ -309,6 +309,7 @@ void process()
 			transformAssociateToMap();
 
 			TicToc t_shift;
+			//현재 내 위치를 matching할 수 있는 point cloud를 cube 내에서 빨리 찾기 위해 전체 cube를 잘게 잘라서 먼저 찾아낸다.
 			int centerCubeI = int((t_w_curr.x() + 25.0) / 50.0) + laserCloudCenWidth;
 			int centerCubeJ = int((t_w_curr.y() + 25.0) / 50.0) + laserCloudCenHeight;
 			int centerCubeK = int((t_w_curr.z() + 25.0) / 50.0) + laserCloudCenDepth;
