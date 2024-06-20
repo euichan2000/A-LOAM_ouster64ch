@@ -94,6 +94,7 @@ Eigen::Quaterniond q_w_curr(1, 0, 0, 0);
 Eigen::Vector3d t_w_curr(0, 0, 0);
 
 // q_curr_last(x, y, z, w), t_curr_last
+//매 순간(10Hz)의 Tranformation matrix를 표현하기 위한 쿼터니언과 translation 값.
 double para_q[4] = {0, 0, 0, 1};
 double para_t[3] = {0, 0, 0};
 
@@ -279,7 +280,8 @@ int main(int argc, char **argv)
                 {
                     corner_correspondence = 0;
                     plane_correspondence = 0;
-
+//ceres: non-linear한 함수를 cost function으로 갖는 문제를 풀어주기 위한 Solver
+                    //error를 minimize하도록 solve한다.
                     //ceres::LossFunction *loss_function = NULL;
                     ceres::LossFunction *loss_function = new ceres::HuberLoss(0.1);
                     ceres::LocalParameterization *q_parameterization =
@@ -299,10 +301,10 @@ int main(int argc, char **argv)
                     for (int i = 0; i < cornerPointsSharpNum; ++i)
                     {
                         TransformToStart(&(cornerPointsSharp->points[i]), &pointSel);
-                        kdtreeCornerLast->nearestKSearch(pointSel, 1, pointSearchInd, pointSearchSqDis);
+                        kdtreeCornerLast->nearestKSearch(pointSel, 1, pointSearchInd, pointSearchSqDis);//pointSel과의 가장 가까운 점의 index와 그 점까지의 거리를 구해줘.
 
                         int closestPointInd = -1, minPointInd2 = -1;
-                        if (pointSearchSqDis[0] < DISTANCE_SQ_THRESHOLD)
+                        if (pointSearchSqDis[0] < DISTANCE_SQ_THRESHOLD)//가장 가까운 점과의 거리가 threshold보다 작으면 다음 단계로 진행
                         {
                             closestPointInd = pointSearchInd[0];
                             int closestPointScanID = int(laserCloudCornerLast->points[closestPointInd].intensity);
@@ -318,7 +320,7 @@ int main(int argc, char **argv)
                                 // if not in nearby scans, end the loop
                                 if (int(laserCloudCornerLast->points[j].intensity) > (closestPointScanID + NEARBY_SCAN))
                                     break;
-
+//가장 직전의 corner point cloud의 점과 현재 점 사이의 거리.
                                 double pointSqDis = (laserCloudCornerLast->points[j].x - pointSel.x) *
                                                         (laserCloudCornerLast->points[j].x - pointSel.x) +
                                                     (laserCloudCornerLast->points[j].y - pointSel.y) *
@@ -361,13 +363,15 @@ int main(int argc, char **argv)
                             }
                         }
                         if (minPointInd2 >= 0) // both closestPointInd and minPointInd2 is valid
-                        {
+                        {//현재 우리의 스캔 포인트
                             Eigen::Vector3d curr_point(cornerPointsSharp->points[i].x,
                                                        cornerPointsSharp->points[i].y,
                                                        cornerPointsSharp->points[i].z);
+                            //1순위로 가까우 점
                             Eigen::Vector3d last_point_a(laserCloudCornerLast->points[closestPointInd].x,
                                                          laserCloudCornerLast->points[closestPointInd].y,
                                                          laserCloudCornerLast->points[closestPointInd].z);
+                            //2순위로 가까운 점
                             Eigen::Vector3d last_point_b(laserCloudCornerLast->points[minPointInd2].x,
                                                          laserCloudCornerLast->points[minPointInd2].y,
                                                          laserCloudCornerLast->points[minPointInd2].z);
@@ -377,6 +381,7 @@ int main(int argc, char **argv)
                                 s = (cornerPointsSharp->points[i].intensity - int(cornerPointsSharp->points[i].intensity)) / SCAN_PERIOD;
                             else
                                 s = 1.0;
+                            //현재 점, 1번째 후보, 2번째 후보를 input으로 주면 점과 점 사이의 거리를 최소화할 수 있도록 풀어준다.
                             ceres::CostFunction *cost_function = LidarEdgeFactor::Create(curr_point, last_point_a, last_point_b, s);
                             problem.AddResidualBlock(cost_function, loss_function, para_q, para_t);
                             corner_correspondence++;
